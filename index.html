@@ -1,1 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waymo Strategy Analysis — Case Study</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
 
+  :root {
+    --green: #00BFA5;
+    --green-dim: #00897B;
+    --green-pale: #E0F7F4;
+    --charcoal: #1A2332;
+    --charcoal-mid: #2E3D4F;
+    --body: #3D4F61;
+    --muted: #6B7C8D;
+    --rule: #D0D9E2;
+    --bg: #FAFBFC;
+    --card: #FFFFFF;
+    --accent-bg: #F0FAF8;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--body);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--charcoal);
+    color: #fff;
+    padding: 80px 48px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 60% 80% at 90% 50%, rgba(0,191,165,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 10% 80%, rgba(0,191,165,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green) 0%, transparent 100%);
+  }
+
+  .header-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .header-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green);
+    border: 1px solid rgba(0,191,165,0.4);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 400;
+    line-height: 1.15;
+    color: #fff;
+    max-width: 680px;
+    margin-bottom: 20px;
+  }
+
+  header h1 em {
+    font-style: italic;
+    color: var(--green);
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .meta-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .meta-value {
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+  }
+
+  .meta-value a { color: var(--green); text-decoration: none; }
+  .meta-value a:hover { text-decoration: underline; }
+
+  /* ── NAV BAR ── */
+  nav {
+    background: var(--charcoal-mid);
+    border-bottom: 1px solid rgba(0,191,165,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .nav-inner a {
+    display: block;
+    padding: 14px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.55);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .nav-inner a:hover {
+    color: var(--green);
+    border-bottom-color: var(--green);
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 48px 80px;
+  }
+
+  /* ── SITUATION BLOCK ── */
+  .situation {
+    background: var(--charcoal);
+    color: #fff;
+    border-left: 4px solid var(--green);
+    padding: 36px 40px;
+    margin: 56px 0 0;
+    border-radius: 0 4px 4px 0;
+    position: relative;
+  }
+
+  .situation-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+
+  .situation h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+
+  .situation p {
+    font-size: 15px;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.78);
+  }
+
+  /* ── STEP SECTIONS ── */
+  .step-section {
+    margin-top: 72px;
+    padding-top: 48px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .step-number {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    background: var(--green);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    margin-top: 4px;
+  }
+
+  .step-title-block {}
+
+  .step-kicker {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .step-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.65rem;
+    font-weight: 400;
+    color: var(--charcoal);
+    line-height: 1.2;
+  }
+
+  .step-body p {
+    margin-bottom: 16px;
+    font-size: 15.5px;
+    color: var(--body);
+    line-height: 1.75;
+  }
+
+  .step-body p:last-child { margin-bottom: 0; }
+
+  /* ── ARTIFACT CARD ── */
+  .artifact-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--green);
+    padding: 36px 40px;
+    margin: 32px 0;
+    border-radius: 0 0 4px 4px;
+  }
+
+  .artifact-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green-dim);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .artifact-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .artifact-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--charcoal);
+    margin-bottom: 16px;
+  }
+
+  .artifact-card p {
+    font-size: 15px;
+    line-height: 1.78;
+    color: var(--body);
+    margin-bottom: 14px;
+  }
+
+  .artifact-card p:last-child { margin-bottom: 0; }
+
+  .artifact-card strong {
+    font-weight: 600;
+    color: var(--charcoal);
+  }
+
+  .drafted-note {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+  }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--green);
+    padding: 20px 24px;
+    margin: 24px 0;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .callout p {
+    font-size: 14.5px;
+    color: var(--body);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .callout strong { color: var(--charcoal-mid); font-weight: 600; }
+
+  /* ── KEY CONCEPTS ── */
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 28px 0;
+  }
+
+  .concept-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    padding: 22px 24px;
+    border-radius: 4px;
+  }
+
+  .concept-card .concept-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--green-dim);
+    margin-bottom: 8px;
+  }
+
+  .concept-card p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--body);
+    margin: 0;
+  }
+
+  /* ── WHAT I LEARNED ── */
+  .learned-section {
+    background: var(--charcoal);
+    color: #fff;
+    padding: 56px 48px;
+    margin-top: 72px;
+  }
+
+  .learned-section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  .learned-section .learned-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+
+  .learned-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .learned-list li {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .learn-bullet {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: rgba(0,191,165,0.15);
+    border: 1px solid rgba(0,191,165,0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .learn-bullet::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+  }
+
+  .learned-list li p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.8);
+    margin: 0;
+  }
+
+  .learned-list li strong {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #111820;
+    padding: 40px 48px;
+    text-align: center;
+  }
+
+  footer p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  footer a {
+    color: var(--green);
+    text-decoration: none;
+  }
+
+  footer a:hover { text-decoration: underline; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 680px) {
+    header { padding: 48px 24px 40px; }
+    main { padding: 0 24px 60px; }
+    .nav-inner { padding: 0 12px; }
+    .artifact-card { padding: 28px 24px; }
+    .situation { padding: 28px 24px; }
+    .learned-section { padding: 40px 24px; }
+    footer { padding: 32px 24px; }
+    .step-number { width: 36px; height: 36px; font-size: 12px; }
+    .step-title { font-size: 1.35rem; }
+    .concepts-grid { grid-template-columns: 1fr; }
+    .header-meta { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="header-tag">Strategy Case Study · Autonomous Vehicles</div>
+    <h1>Waymo Strategy Analysis:<br><em>Applied AI Decision-Making</em></h1>
+    <p style="color:rgba(255,255,255,0.65); font-size:15px; max-width:580px; margin-top:16px; line-height:1.7;">
+      A multi-step simulated analyst assignment tracing the path from deep learning fundamentals to a board-ready city expansion recommendation — built with live simulators, real incident data, and Claude-assisted drafting.
+    </p>
+    <div class="header-meta">
+      <div class="meta-item">
+        <span class="meta-label">Analyst</span>
+        <span class="meta-value">Samantha Hernandez</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Contact</span>
+        <span class="meta-value"><a href="mailto:hernans7@wwu.edu">hernans7@wwu.edu</a></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Scope</span>
+        <span class="meta-value">7 Steps · Deep Learning → City Recommendation</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Tools</span>
+        <span class="meta-value">Live Simulators + Claude AI Drafting</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#situation">The Situation</a>
+    <a href="#step1">DL Basics</a>
+    <a href="#step2">DL at Waymo</a>
+    <a href="#step3">World Models</a>
+    <a href="#step4">RL & Planning</a>
+    <a href="#step5">Data Strategy</a>
+    <a href="#step6">Recommendation</a>
+    <a href="#learned">Key Takeaways</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- SITUATION -->
+  <section id="situation" class="situation">
+    <div class="situation-label">The Situation</div>
+    <h2>A 14-second hesitation and a VP's question</h2>
+    <p>
+      Two weeks ago in Austin, Texas, a Waymo car hesitated for 14 seconds at an unprotected left turn. No safety issue — but the rider gave it a 2-star review and tweeted about it. Engineering flagged it as both a perception problem and a planner problem. The VP of Strategy asked me to figure out what that actually meant, and to come back Monday with a recommendation: which city should Waymo launch in next?
+    </p>
+  </section>
+
+  <!-- STEP 1 -->
+  <section id="step1" class="step-section">
+    <div class="step-header">
+      <div class="step-number">01</div>
+      <div class="step-title-block">
+        <div class="step-kicker">Foundation</div>
+        <h2 class="step-title">Deep Learning Basics</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        Before I could evaluate Waymo's technology, I needed to understand how deep learning actually works. I trained a small neural network by hand — labeling images as "cat" or "not cat" and watching the model's feature weights shift with each labeled example. The key realization was immediate: the model didn't understand cats. It learned what cats tend to look like in data, by tracking which features (pointy ears, whiskers, small size) reliably predicted the right label.
+      </p>
+      <p>
+        I then studied a four-stage visualization of a convolutional neural network (CNN) processing a pedestrian image — watching raw pixels become edges, edges become body parts, and body parts resolve into a final classification: "pedestrian, 94% confident." Finally, a long-tail frequency chart made the hardest business truth concrete: a handful of common scenarios dominate real-world mileage, while thousands of rare ones — costumed kids, wheelchair users, murals on trucks, mattresses falling off cars — are precisely where AI systems break down.
+      </p>
+    </div>
+
+    <div class="concepts-grid">
+      <div class="concept-card">
+        <div class="concept-title">Neural Networks</div>
+        <p>Learn by seeing thousands of labeled examples. More data → stronger weights → smarter predictions. The network isn't reasoning; it's pattern-matching at scale.</p>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">CNNs Build in Layers</div>
+        <p>Raw pixels → edges → shapes → objects. Each layer is slightly smarter than the one before. "Deep" just means many layers stacked together.</p>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">The Long Tail Problem</div>
+        <p>Models are only as good as their training data's edge cases. Common scenarios are easy. Rare, dangerous ones barely appear in data — and that gap is where AI fails in deployment.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="step2" class="step-section">
+    <div class="step-header">
+      <div class="step-number">02</div>
+      <div class="step-title-block">
+        <div class="step-kicker">Applied Deep Learning</div>
+        <h2 class="step-title">Deep Learning at Waymo</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        I played the role of a Waymo ML analyst evaluating three training-dataset vendors: Dataset A ("Easy Miles" — sunny Phoenix frames, $100M), Dataset B ("Balanced" — varied conditions, $180M), and Dataset C ("Edge-Case Heavy" — rare scenarios, $300M). Training a simulated perception network on each revealed something the summary numbers hide: overall accuracy is the wrong metric for a self-driving company. The cheap dataset looked fine on aggregate — but catastrophically failed on the exact edge cases that cause crashes and lawsuits.
+      </p>
+      <p>
+        I then drafted a CFO-facing email defending my dataset choice, translating the technical tradeoff into business terms: regulatory risk, safety record liability, and competitive positioning.
+      </p>
+    </div>
+
+    <div class="artifact-card">
+      <div class="artifact-label">Step 2 Artifact · CFO Email</div>
+      <h3>Subject: Dataset Investment Recommendation — $180M for Balanced Coverage</h3>
+      <p>
+        <strong>Recommendation:</strong> I am recommending Dataset B (Balanced, $180M) for Waymo's next perception model training cycle.
+      </p>
+      <p>
+        First, regulatory exposure: a model trained only on sunny Phoenix daylight (Dataset A) creates an auditable record that we knowingly skipped adverse-condition training. One serious night-rain incident becomes a discovery liability, not just a PR problem. Dataset B demonstrates due diligence across real-world conditions regulators already expect us to handle.
+      </p>
+      <p>
+        Second, competitive positioning: Dataset C's edge-case focus is the right long-term bet, but its 18-month collection timeline costs us 2–3 city launches during which Tesla continues accumulating fleet miles. Dataset B gets a meaningfully safer model into the field within 8 months while we build the simulation capacity to manufacture edge cases on demand (see the world model investment brief).
+      </p>
+      <p>
+        Third, total cost of the alternative: the $80M saved by choosing Dataset A is smaller than a single high-profile incident's legal, regulatory, and brand cost. Dataset B is the risk-adjusted choice.
+      </p>
+      <p>
+        <strong>Tradeoff accepted:</strong> We will not lead on edge-case performance at launch. We are explicitly betting that our world model simulation can close that gap before a competitor exploits it.
+      </p>
+      <p class="drafted-note">Drafted with Claude and edited for voice and accuracy.</p>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="step3" class="step-section">
+    <div class="step-header">
+      <div class="step-number">03</div>
+      <div class="step-title-block">
+        <div class="step-kicker">Simulation Infrastructure</div>
+        <h2 class="step-title">World Models</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        The long-tail problem from Step 1 raised an obvious question: how does Waymo get enough training data for scenarios that almost never happen in real life? The answer is world models — AI systems trained on reality that can compose novel driving scenarios from ingredients they understand separately, rather than pulling from a recording library.
+      </p>
+      <p>
+        I built rare scenarios in the simulator by mixing four ingredients (weather, time of day, road actors, and a wildcard) and watched the model assemble them. The mile estimates were revealing: a scenario like "snow + night + wheelchair user hidden behind a truck" would require millions of real-world miles to encounter naturally. The world model generates it on demand in seconds. This is transfer learning in practice — Waymo's system is built on Google DeepMind's Genie 3, which learned how snow falls, how light behaves at dusk, how humans move, from general video — then adapted those skills to driving.
+      </p>
+    </div>
+
+    <div class="artifact-card">
+      <div class="artifact-label">Step 3 Artifact · Internal Investment Brief</div>
+      <h3>Why World Model Investment Is a Strategic Moat, Not an R&D Expense</h3>
+      <p>
+        The core argument: world model simulation can do something Tesla's 6 million cars cannot — generate targeted rare scenarios on demand. In the simulator, I built scenes like "night rain + wheelchair user hidden behind a parked truck" and "heavy fog + Halloween costume pedestrian + construction zone." Each would require millions of miles of real-world driving to encounter naturally. The world model assembled them in seconds by combining knowledge it already had about fog, rain, costumes, and occlusion — not by finding a recording.
+      </p>
+      <p>
+        This is the advantage Tesla's fleet volume doesn't neutralize. Tesla collects scale; Waymo manufactures specificity. When our perception model fails on "child in a costume near a construction zone at dusk," we don't wait for that to happen in Phoenix — we generate 50,000 variations of it in simulation and retrain. That loop — identify weakness, manufacture examples, retrain — is what the $XX simulation investment actually buys.
+      </p>
+      <p>
+        On Tesla's volume advantage: they will always have more real miles. That's not the competition. The question is whether raw volume solves the long tail. It doesn't — because rare scenarios are rare. Tesla's fleet might encounter "black ice on a bridge in a city that hasn't seen snow in a decade" once. Waymo's world model generates it by the thousand. Volume wins the head of the distribution; targeted generation wins the tail.
+      </p>
+      <p>
+        If we stop investing in simulation capacity, we lose the ability to close edge-case gaps without waiting for the real world to produce them. That wait time is measured in crashes, not quarters.
+      </p>
+      <p class="drafted-note">Drafted with Claude and edited for voice and accuracy.</p>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section id="step4" class="step-section">
+    <div class="step-header">
+      <div class="step-number">04</div>
+      <div class="step-title-block">
+        <div class="step-kicker">Reinforcement Learning</div>
+        <h2 class="step-title">Planning & the Alignment Problem</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        Perception tells the car what's out there. The planner decides what to do about it. This prediction-decision gap is where the Austin incident actually lived — the car may have seen the oncoming Subaru just fine. It just couldn't decide when to go.
+      </p>
+      <p>
+        I designed a reward function to train the planner on the Austin-style unprotected left turn. The simulator gave me one reward slider (completing a turn) and three penalty sliders (collisions, close calls, wait time per second), with a 20-point penalty budget that forced real tradeoffs. The car was then trained on 1,000 simulated attempts and tested on a fresh 300-attempt held-out set — the same structure real ML evaluation uses. The goal: hit all three defensibility bars simultaneously (≥95% completion, ≤1 collision, average wait under 8 seconds). The hard discovery: any two were easy. All three forced explicit tradeoffs.
+      </p>
+    </div>
+
+    <div class="artifact-card">
+      <div class="artifact-label">Step 4 Artifact · Safety Board Defense</div>
+      <h3>Reward Function Defense — Unprotected Left Turn Policy</h3>
+      <p>
+        My reward function assigned +8 points for completing a turn, with a penalty budget distributed as follows: 7 points for collision, 5 points for close call, and 8 points for each second of wait time. On the 300-attempt test set, the trained policy produced 291 successful turns (97% completion, above the ≥285 bar), 1 collision (at the ≤1 ceiling), and an average wait of 6.2 seconds (below the 8-second bar). All three defensibility bars were met.
+      </p>
+      <p>
+        The hardest bar to hit simultaneously with the others was the collision ceiling. Reducing wait-time penalties to address the Austin hesitation problem created a more aggressive policy that initially produced 3 collisions — above the threshold. The tradeoff I explicitly accepted: I allocated the highest penalty weight to wait time and collision equally, accepting that close-call frequency would be higher than a maximally cautious policy would produce. The logic: close calls are recoverable and invisible to riders; collisions are not. A policy with a higher close-call rate that stays under 1 collision in 300 attempts is a more defensible operating posture than one that minimizes all three simultaneously at the cost of the collision bar. I'm presenting this as a defensible tradeoff — not a guarantee — because real-world edge cases will arise that this training set didn't contain.
+      </p>
+      <p class="drafted-note">Drafted with Claude and edited for voice and accuracy.</p>
+    </div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section id="step5" class="step-section">
+    <div class="step-header">
+      <div class="step-number">05</div>
+      <div class="step-title-block">
+        <div class="step-kicker">Business Strategy</div>
+        <h2 class="step-title">Data Strategy & the AI Moat</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        Steps 1–4 were about how the AI works. Step 5 is about how the company wins. I studied the contrasting data strategies of Waymo (simulation-first, purpose-built fleet, expensive sensors) and Tesla (fleet-first, cameras only, 6 million cars collecting miles continuously), then allocated a $1B Waymo data budget across five categories: fleet expansion, simulation capacity, human labelers, sensor upgrades, and data partnerships.
+      </p>
+      <p>
+        The key strategic insight: not all data spending creates a moat. Fleet expansion and data partnerships are replicable with capital. Simulation capacity and sensor quality compound — each dollar spent makes future dollars more productive. I then applied the three data-moat questions to a second company (Duolingo) to verify I could use the framework outside this context.
+      </p>
+    </div>
+
+    <div class="callout">
+      <p><strong>My $1B allocation:</strong> Fleet Expansion 20% · Simulation Capacity 35% · Human Labelers 20% · Sensor Upgrades 15% · Data Partnerships 10%</p>
+    </div>
+
+    <div class="artifact-card">
+      <div class="artifact-label">Step 5 Artifact · Data Moat Evaluation — Duolingo</div>
+      <h3>Evaluating Duolingo's Data Moat Using the Three-Question Framework</h3>
+      <p>
+        <strong>1. Where does their data come from?</strong> Duolingo's primary data asset is behavioral — hundreds of millions of learners completing exercises, making mistakes, and signaling which content formats drive retention. Unlike most AI companies whose training data is scraped or purchased, Duolingo's data is generated by the product itself. Every lesson completed adds a signal: which exercise format worked, which vocabulary item was forgotten at which interval, which explanation reduced error rate. The data is proprietary and impossible to acquire externally because it encodes individual learning trajectories, not just content.
+      </p>
+      <p>
+        <strong>2. Does the pipeline keep getting better on its own?</strong> Yes — and this is Duolingo's sharpest advantage. More learners → more behavioral signal → better spaced-repetition models → more effective lessons → better retention → more learners. The compounding loop is tight and self-reinforcing. Their AI-generated content (Duolingo Max features, conversation practice) creates new behavioral data with every interaction, which refines the generation models. The pipeline doesn't just sustain itself; it accelerates. A competitor starting today would face a cold-start problem: they'd need learners to generate data, but learners prefer the platform that already has better models.
+      </p>
+      <p>
+        <strong>3. Can a competitor replicate it with money alone?</strong> Partially. A well-funded competitor could acquire curriculum content, hire linguists, and build a comparable app — but they cannot buy the behavioral dataset that trained Duolingo's difficulty-calibration and retention models. That dataset required years of actual learner behavior at scale. The specific gap isn't content; it's the calibration data that tells you this grammar concept takes 7 exposures for a Spanish speaker but 13 for a Mandarin speaker. That's not learnable from a static corpus.
+      </p>
+      <p>
+        <strong>Verdict: Strong moat.</strong> Duolingo's data advantage compounds automatically, is genuinely proprietary (generated by product usage, not purchased), and the hardest-to-replicate layer — behavioral calibration data — cannot be bought at any price without the user base that generates it.
+      </p>
+      <p class="drafted-note">Drafted with Claude and edited for voice and accuracy.</p>
+    </div>
+  </section>
+
+  <!-- STEP 6 -->
+  <section id="step6" class="step-section">
+    <div class="step-header">
+      <div class="step-number">06</div>
+      <div class="step-title-block">
+        <div class="step-kicker">The Recommendation</div>
+        <h2 class="step-title">City #5: Seattle</h2>
+      </div>
+    </div>
+
+    <div class="step-body">
+      <p>
+        Everything built to this point converges on a single question: which city should Waymo launch in next? I analyzed three real social-license incidents (SF coning protests, Austin fire-truck blockage, Miami taxi-union opposition), evaluated the specific regulatory and community landscape in four candidate cities (Miami, Seattle, Atlanta, New York), and weighed each against what I'd learned about perception readiness, world model needs, reward function fit, and data-moat growth potential.
+      </p>
+      <p>
+        Atlanta was disqualifying: an active NHTSA investigation into school bus stop-arm violations and state lawmakers already calling for a pause makes it politically untenable right now. New York's union coalition — 170,000 drivers, TWU support, Gov. Hochul already retreating — makes near-term operation structurally blocked. Miami's unorganized opposition is manageable, but hurricane-season incidents would define the narrative before Waymo controls it. That leaves Seattle: tech-friendly regulators, rain data that genuinely improves the model, and opposition that is organized but not yet politically entrenched.
+      </p>
+    </div>
+
+    <div class="artifact-card">
+      <div class="artifact-label">Step 6 Artifact · Recommendation Memo to VP of Strategy</div>
+      <h3>Memo: Waymo City #5 Recommendation — Seattle, WA</h3>
+      <p>
+        <strong>Recommendation:</strong> Launch Waymo's fifth city in Seattle. The window is open now; it won't be open indefinitely. Here's why this is the right call.
+      </p>
+      <p>
+        <strong>Tech readiness.</strong> Seattle's operating environment — constant rain, steep gradients, dense construction activity — is precisely the edge-case portfolio our perception model needs next. The balanced dataset (Dataset B) I'd recommend for launch gives us solid baseline performance; Seattle's conditions will generate the adverse-weather behavioral data that closes the remaining gap toward a Dataset C-caliber model organically. The world model can pre-generate the steep-hill + rain + obscured pedestrian scenarios before we turn the first car on. From a reward-function perspective, Seattle's culture rewards predictable, rule-following driving — a balanced-to-cautious planner profile is the social fit, not an aggressive one.
+      </p>
+      <p>
+        <strong>Data moat.</strong> My $1B allocation (35% simulation, 20% fleet, 20% labelers, 15% sensors, 10% partnerships) is designed to build compounding advantage, not one-time coverage. Seattle builds rain-specific perception data that compounds — every mile in wet conditions makes the model smarter for every future wet-weather market. The rain-driving dataset is genuinely hard to replicate without operating in rain cities, which makes it a moat component, not just coverage.
+      </p>
+      <p>
+        <strong>Social license path.</strong> Seattle's opposition is real but not yet entrenched. The Amalgamated Transit Union is present and the disability-access and bike-advocacy communities are vocal. But no organized coalition has yet formed, and no legislation has passed. That's a six-to-twelve month window to get ahead of it. My preemptive plan: engage Seattle Metro and King County Metro on an emergency-vehicle priority protocol before launch (Austin fire-truck lesson applied), and open a formal dialogue with ATU Seattle on remote-operator career pathways for current drivers. The transit-worker opposition follows a predictable arc — it hardens into legislation if ignored and softens into partnership if engaged early. We engage first.
+      </p>
+      <p>
+        <strong>The risk I'm accepting.</strong> Seattle's hills and construction density will produce more operational edge cases than Phoenix or Austin did in the early months. There will be incidents. The mitigation: pre-launch simulation of hill-and-rain scenarios at scale, a more conservative initial operating zone (flatter central Seattle corridors first), and a community liaison embedded with the city before the first car rolls. We lean on Waymo's own safety data proactively — 3.5× safer than human drivers in injury-producing crashes — not defensively after an incident. Trauma surgeon Dr. Jonathan Slotkin's NYT op-ed is the frame: the question isn't "is this dangerous?" it's "compared to what?" In Seattle, where 40,000 Americans die in traffic each year, the comparison is damning.
+      </p>
+      <p>
+        <strong>What I'd watch in the first 6 months:</strong> (1) Incident rate in rain vs. dry conditions — the gap tells us whether our pre-training was sufficient; (2) ATU's posture toward the career-pathway offer — acceptance means we've neutralized the most organized opposition; (3) Media framing of any incidents — are we controlling the "compared to what?" narrative or reacting to a safety frame we didn't set? If all three trends are positive at month 6, accelerate. If ATU hardens and incident coverage goes negative, we have time to course-correct before the political window closes.
+      </p>
+      <p class="drafted-note">Drafted with Claude and edited for voice and accuracy.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- WHAT I LEARNED -->
+<section id="learned" class="learned-section">
+  <div style="max-width:860px; margin:0 auto; padding:0 48px;">
+    <h2>What I Learned</h2>
+    <p class="learned-sub">Seven concepts I can now apply to any AI company — not just Waymo.</p>
+    <ul class="learned-list">
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>The Long-Tail Problem:</strong> Common scenarios are easy and cheap to solve. The rare events — the ones that barely appear in training data — are where AI products succeed or fail in deployment. This is the fundamental challenge in any real-world AI system.</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>World Models & Transfer Learning:</strong> AI doesn't need to have seen a specific scenario to simulate it — it can compose from ingredients it understands separately. This is what makes simulation a scalable solution to the long tail, and it's why foundation models trained on general data are so strategically valuable.</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>The Alignment Problem:</strong> Making an AI's objectives match what humans actually want is harder than it looks. A reward function that fixes hesitation creates aggression; one that eliminates aggression creates hesitation. The goal isn't a perfect reward function — it's a defensible tradeoff with documented reasoning.</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>The Prediction-Decision Gap:</strong> Every real AI system splits into predicting what's happening and deciding what to do about it. The prediction half gets the engineering attention; the decision half is where human values, company strategy, and accountability collide. Evaluate AI businesses on both halves.</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>The Data Moat & Compounding Advantage:</strong> Better data → better model → more usage → more data. The AI company that builds this loop first tends to pull ahead permanently. Three questions for any AI company: Where does the data come from? Does it compound? Can a competitor buy the same data?</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>Social License:</strong> Technical capability is necessary but not sufficient. A community's permission to operate — and a workforce's willingness to accept change — can make or break an otherwise sound launch strategy. Engage stakeholders before they organize opposition, not after.</p>
+      </li>
+      <li>
+        <div class="learn-bullet"></div>
+        <p><strong>The "Compared to What?" Frame:</strong> Any AI system should be evaluated against the real-world baseline it replaces, not against perfection. Waymo's cars make mistakes; human drivers kill 38,000 Americans a year. The frame matters as much as the facts.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    Samantha Hernandez · <a href="mailto:hernans7@wwu.edu">hernans7@wwu.edu</a> · Built as part of Deep Learning & AI Strategy coursework
+  </p>
+  <p style="margin-top:8px;">All AI-assisted artifacts were drafted with Claude and edited for accuracy and voice.</p>
+</footer>
+
+</body>
+</html>
